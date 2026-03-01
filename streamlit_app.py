@@ -162,6 +162,7 @@ def generate_assistant_text(messages_to_send, system_text: str) -> str:
         response = openai_client.responses.create(
             model=MODEL_SELECTED,
             input=response_input,
+            reasoning = {"effort": "minimal"},
         )
         return response.output_text
     except BadRequestError:
