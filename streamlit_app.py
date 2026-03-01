@@ -11,6 +11,7 @@ from google.cloud import storage
 from google.oauth2.service_account import Credentials
 
 from models import MODEL_CONFIGS
+from utils.prompt_utils import build_structured_output_instruction
 from utils.utils import response_generator
 
 # ----------------------------
@@ -208,23 +209,8 @@ def build_user_visible_reply(payload: dict) -> str:
     )
 
 
-def generate_assistant_payload(messages_to_send, system_text: str) -> dict:
-    structured_output_instruction = (
-        "Return ONLY valid JSON (no markdown, no extra text) with exactly these keys: "
-        "quantitative_reasoning, qualitative_reasoning, short_quantitative_reasoning, "
-        "short_qualitative_reasoning, quantitative_answer, qualitative_answer. "
-        "Process requirements in this exact order: "
-        "1) Compute quantitative_reasoning first using explicit mathematical steps and assumptions. "
-        "2) Produce quantitative_answer as the exact final order quantity from that math. "
-        "3) Translate the quantitative reasoning into qualitative_reasoning (plain language, no equations). "
-        "4) Produce qualitative_answer as a directional recommendation consistent with the quantitative result, but without exact numbers. "
-        "Requirements: quantitative_reasoning can include math and explicit calculations. "
-        "qualitative_reasoning must avoid equations and be a translation of the quantitative logic into plain language. "
-        "short_quantitative_reasoning and short_qualitative_reasoning should each be concise (1-2 sentences). "
-        "quantitative_answer must be ONE exact integer only (for example: 12), with no words or units. "
-        "qualitative_answer must convey the same final recommendation direction as quantitative_answer but must not include digits. "
-        "If information is missing, make explicit assumptions in reasoning but still provide one exact integer in quantitative_answer."
-    )
+def generate_assistant_payload(messages_to_send, system_text: str, mode_key: str) -> dict:
+    structured_output_instruction = build_structured_output_instruction(mode_key)
 
     response_input = [{"role": "system", "content": system_text}]
     response_input.append({"role": "system", "content": structured_output_instruction})
@@ -403,7 +389,11 @@ if user_input := st.chat_input("Ask a Beer Game question...", disabled=not chat_
     # Generate assistant response
     try:
         role_aware_prompt = build_system_prompt(system_prompt, st.session_state["selected_role"])
-        assistant_payload = generate_assistant_payload(st.session_state["messages"], role_aware_prompt)
+        assistant_payload = generate_assistant_payload(
+            st.session_state["messages"],
+            role_aware_prompt,
+            selected_mode,
+        )
         assistant_text = build_user_visible_reply(assistant_payload)
     except Exception as exc:
         st.error(str(exc))
