@@ -32,6 +32,7 @@ STRUCTURED_OUTPUT_COMMON_INSTRUCTION = (
     "Return ONLY valid JSON (no markdown, no extra text) with exactly these keys: "
     "quantitative_reasoning, qualitative_reasoning, short_quantitative_reasoning, "
     "short_qualitative_reasoning, quantitative_answer, qualitative_answer. "
+    "All six keys are mandatory in every response, even if some values are brief strings. "
     "Process requirements in this exact order: "
     "1) Compute quantitative_reasoning first using explicit mathematical steps and assumptions. "
     "2) Produce quantitative_answer as the exact final order quantity from that math. "
@@ -48,7 +49,7 @@ QUANTITATIVE_OUTPUT_INSTRUCTION = (
 QUALITATIVE_OUTPUT_INSTRUCTION = (
     "For qualitative fields: qualitative_reasoning must avoid equations and express the same logic in plain language. "
     "qualitative_answer must convey the same recommendation direction as quantitative_answer but must not include digits. "
-    "short_quantitative_reasoning and short_qualitative_reasoning should each be concise (1-2 sentences)."
+    "short_quantitative_reasoning and short_qualitative_reasoning are required and should each be concise (1-2 sentences)."
 )
 
 
@@ -66,4 +67,3 @@ def build_structured_output_instruction(mode_key: str) -> str:
             mode_specific,
         ]
     )
-
