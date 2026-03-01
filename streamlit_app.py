@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import shutil
 import json
+import re
 from datetime import datetime
 from openai import OpenAI, BadRequestError
 
@@ -189,6 +190,12 @@ def validate_structured_response(payload: dict) -> dict:
         value = payload.get(key, "")
         clean_payload[key] = str(value).strip()
 
+    if not re.fullmatch(r"-?\d+", clean_payload["quantitative_answer"]):
+        raise ValueError("quantitative_answer must be a single exact integer with no extra text.")
+
+    if re.search(r"\d", clean_payload["qualitative_answer"]):
+        raise ValueError("qualitative_answer must be directional only and must not include exact numbers.")
+
     return clean_payload
 
 
@@ -206,9 +213,17 @@ def generate_assistant_payload(messages_to_send, system_text: str) -> dict:
         "Return ONLY valid JSON (no markdown, no extra text) with exactly these keys: "
         "quantitative_reasoning, qualitative_reasoning, short_quantitative_reasoning, "
         "short_qualitative_reasoning, quantitative_answer, qualitative_answer. "
+        "Process requirements in this exact order: "
+        "1) Compute quantitative_reasoning first using explicit mathematical steps and assumptions. "
+        "2) Produce quantitative_answer as the exact final order quantity from that math. "
+        "3) Translate the quantitative reasoning into qualitative_reasoning (plain language, no equations). "
+        "4) Produce qualitative_answer as a directional recommendation consistent with the quantitative result, but without exact numbers. "
         "Requirements: quantitative_reasoning can include math and explicit calculations. "
-        "qualitative_reasoning must avoid equations and translate the quantitative logic into plain language. "
-        "short_quantitative_reasoning and short_qualitative_reasoning should each be concise (1-2 sentences)."
+        "qualitative_reasoning must avoid equations and be a translation of the quantitative logic into plain language. "
+        "short_quantitative_reasoning and short_qualitative_reasoning should each be concise (1-2 sentences). "
+        "quantitative_answer must be ONE exact integer only (for example: 12), with no words or units. "
+        "qualitative_answer must convey the same final recommendation direction as quantitative_answer but must not include digits. "
+        "If information is missing, make explicit assumptions in reasoning but still provide one exact integer in quantitative_answer."
     )
 
     response_input = [{"role": "system", "content": system_text}]
