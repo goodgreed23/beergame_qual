@@ -182,14 +182,20 @@ def extract_first_json_object(raw_text: str) -> dict:
 
 
 def validate_structured_response(payload: dict) -> dict:
-    missing = [key for key in STRUCTURED_RESPONSE_KEYS if key not in payload]
-    if missing:
-        raise ValueError(f"Model JSON missing required keys: {', '.join(missing)}")
-
     clean_payload = {}
     for key in STRUCTURED_RESPONSE_KEYS:
         value = payload.get(key, "")
         clean_payload[key] = str(value).strip()
+
+    if not clean_payload["short_quantitative_reasoning"]:
+        clean_payload["short_quantitative_reasoning"] = clean_payload[
+            "quantitative_reasoning"
+        ][:240].strip()
+
+    if not clean_payload["short_qualitative_reasoning"]:
+        clean_payload["short_qualitative_reasoning"] = clean_payload[
+            "qualitative_reasoning"
+        ][:240].strip()
 
     if not re.fullmatch(r"-?\d+", clean_payload["quantitative_answer"]):
         raise ValueError("quantitative_answer must be a single exact integer with no extra text.")
