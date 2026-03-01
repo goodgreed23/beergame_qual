@@ -435,7 +435,7 @@ if user_input := st.chat_input("Ask a Beer Game question...", disabled=not chat_
         st.error(str(exc))
         st.stop()
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar="🍺"):
         st.write_stream(response_generator(response=assistant_text))
 
     st.session_state["messages"].append(
