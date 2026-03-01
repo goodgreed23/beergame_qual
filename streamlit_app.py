@@ -59,78 +59,11 @@ except Exception as exc:
     st.stop()
 
 # ----------------------------
-# Session state init
+# Constants
 # ----------------------------
-if "start_time" not in st.session_state:
-    st.session_state["start_time"] = datetime.now()
-
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [
-        {"role": "assistant", "content": "Hello, I am your Beer Game coach."}
-    ]
-
-if "selected_section" not in st.session_state:
-    st.session_state["selected_section"] = "OPMGT 301 A"
-
-if "selected_role" not in st.session_state:
-    st.session_state["selected_role"] = ""
-
-if "welcome_role" not in st.session_state:
-    st.session_state["welcome_role"] = ""
-
-# Lock role after the first USER message is sent
-if "role_locked" not in st.session_state:
-    st.session_state["role_locked"] = False
-
-messages = st.session_state["messages"]
-
-# ----------------------------
-# Sidebar inputs (Section -> PID -> Role)
-# ----------------------------
-
-st.sidebar.markdown("### Instruction")
-st.sidebar.info("""When you use the Beer Game Assistant, keep the following the following in mind:
-
-- Do **not** change your role mid-game (the assistant will reset).
-- Do **not** refresh the page (the assistant will reset).
-- Responses may take a moment—please be patient.
-- For best advice, share the current week’s context during each interaction. This can include **Week, Demand, Inv/Bk (inventory or backlog), Incoming shipment, Relevant recent orders**.
-- If something looks wrong or you hit a technical issue, **raise your hand**.""")
-
 SECTION_OPTIONS = ["OPMGT 301 A", "OPMGT 301 B", "OPMGT 301 C"]
-
-section_index = 0
-if st.session_state["selected_section"] in SECTION_OPTIONS:
-    section_index = SECTION_OPTIONS.index(st.session_state["selected_section"])
-
-user_section = st.sidebar.selectbox(
-    "Section",
-    SECTION_OPTIONS,
-    index=section_index,
-    help="Select your class section.",
-)
-st.session_state["selected_section"] = user_section
-
-user_pid = st.sidebar.text_input("Canvas Group Number")
-
-ROLE_OPTIONS = ["Select your role...", "Retailer", "Wholesaler", "Distributor", "Factory"]
-
-role_disabled = (not bool(user_pid.strip())) or st.session_state["role_locked"]
-
-# Selectbox index should reflect previously selected role when possible
-role_index = 0
-if st.session_state["selected_role"] in ROLE_OPTIONS:
-    role_index = ROLE_OPTIONS.index(st.session_state["selected_role"])
-
-user_role = st.sidebar.selectbox(
-    "Role",
-    ROLE_OPTIONS,
-    index=role_index,
-    disabled=role_disabled,
-    help="Enter Canvas Group Number first. Role will lock after your first message.",
-)
-
-role_valid = user_role != "Select your role..."
+ROLE_PLACEHOLDER = "Select your role..."
+ROLE_OPTIONS = [ROLE_PLACEHOLDER, "Retailer", "Wholesaler", "Distributor", "Factory"]
 
 selected_mode = "BeerGameQualitative"
 system_prompt = MODEL_CONFIGS[selected_mode]["prompt"]
@@ -145,6 +78,34 @@ STRUCTURED_RESPONSE_KEYS = [
 ]
 
 # ----------------------------
+# Session state init
+# ----------------------------
+if "start_time" not in st.session_state:
+    st.session_state["start_time"] = datetime.now()
+
+if "messages" not in st.session_state:
+    st.session_state["messages"] = [
+        {"role": "assistant", "content": "Hello, I am your Beer Game coach."}
+    ]
+
+if "selected_section" not in st.session_state:
+    st.session_state["selected_section"] = SECTION_OPTIONS[0]
+
+if "selected_role" not in st.session_state:
+    st.session_state["selected_role"] = ROLE_PLACEHOLDER
+
+if "welcome_role" not in st.session_state:
+    st.session_state["welcome_role"] = ""
+
+# Lock role after the first USER message is sent
+if "role_locked" not in st.session_state:
+    st.session_state["role_locked"] = False
+
+# Persist PID in session state (prevents weird rerun behavior)
+if "pid" not in st.session_state:
+    st.session_state["pid"] = ""
+
+# ----------------------------
 # Helpers
 # ----------------------------
 def sanitize_for_filename(value: str) -> str:
@@ -153,7 +114,7 @@ def sanitize_for_filename(value: str) -> str:
 
 def build_system_prompt(base_prompt: str, role: str) -> str:
     role_text = role.strip() if role else ""
-    if not role_text:
+    if not role_text or role_text == ROLE_PLACEHOLDER:
         return base_prompt
     return (
         f"{base_prompt}\n\n"
@@ -165,8 +126,9 @@ def build_system_prompt(base_prompt: str, role: str) -> str:
 def build_welcome_message(role: str) -> str:
     role_text = role.strip()
     return (
-        f"You are the '{role_text}'. I will help you with making ordering decisions."
-        "Please share the current week’s context including incoming demand, inventory, backlog, and relevant recent orders you’ve made."
+        f"You are the '{role_text}'. I will help you with making ordering decisions.\n\n"
+        "Please share the current week’s context including **Week, Demand, Inv/Bk (inventory or backlog), "
+        "Incoming shipment, Relevant recent orders**."
     )
 
 
@@ -236,7 +198,7 @@ def generate_assistant_payload(messages_to_send, system_text: str, mode_key: str
         response = openai_client.responses.create(
             model=MODEL_SELECTED,
             input=response_input,
-            reasoning = {"effort": "minimal"},
+            reasoning={"effort": "minimal"},
         )
         payload = extract_first_json_object(response.output_text)
         return validate_structured_response(payload)
@@ -255,7 +217,7 @@ def generate_assistant_payload(messages_to_send, system_text: str, mode_key: str
 
 
 def save_conversation_to_gcp(messages_to_save, mode_key: str, pid: str, role: str, section: str):
-    if not pid or not role or not section:
+    if not pid or not role or not section or role == ROLE_PLACEHOLDER:
         return None, "missing_required_fields"
     try:
         end_time = datetime.now()
@@ -276,7 +238,7 @@ def save_conversation_to_gcp(messages_to_save, mode_key: str, pid: str, role: st
         )
         chat_history_df = pd.concat([chat_history_df, metadata_rows], ignore_index=True)
 
-        created_files_path = f"conv_history_P{pid}"
+        created_files_path = f"conv_history_P{sanitize_for_filename(pid)}"
         os.makedirs(created_files_path, exist_ok=True)
 
         safe_pid = sanitize_for_filename(pid)
@@ -304,10 +266,10 @@ def save_structured_response_to_gcp(
     section: str,
     user_input: str,
 ):
-    if not pid or not role or not section:
+    if not pid or not role or not section or role == ROLE_PLACEHOLDER:
         return None, "missing_required_fields"
     try:
-        created_files_path = f"structured_output_P{pid}"
+        created_files_path = f"structured_output_P{sanitize_for_filename(pid)}"
         os.makedirs(created_files_path, exist_ok=True)
 
         safe_pid = sanitize_for_filename(pid)
@@ -341,25 +303,68 @@ def save_structured_response_to_gcp(
         return None, str(exc)
 
 # ----------------------------
+# Sidebar inputs (Section -> PID -> Role)
+# ----------------------------
+st.sidebar.markdown("### Instruction")
+st.sidebar.info(
+    """
+When you use the Beer Game Assistant, keep the following in mind:
+
+- Do **not** change your role mid-game (the assistant will reset).
+- Do **not** refresh the page (the assistant will reset).
+- Responses may take a moment—please be patient.
+- For best advice, share the current week’s context during each interaction. This can include **Week, Demand, Inv/Bk (inventory or backlog), Incoming shipment, Relevant recent orders**.
+- If something looks wrong or you hit a technical issue, **raise your hand**.
+"""
+)
+
+# Section
+section_index = SECTION_OPTIONS.index(st.session_state["selected_section"]) if st.session_state["selected_section"] in SECTION_OPTIONS else 0
+st.sidebar.selectbox(
+    "Section",
+    SECTION_OPTIONS,
+    index=section_index,
+    help="Select your class section.",
+    key="selected_section",
+)
+
+# PID (Canvas Group Number)
+st.sidebar.text_input("Canvas Group Number", key="pid")
+
+# Role (requires PID; locks after first message)
+role_disabled = (not bool(st.session_state["pid"].strip())) or st.session_state["role_locked"]
+
+role_index = ROLE_OPTIONS.index(st.session_state["selected_role"]) if st.session_state["selected_role"] in ROLE_OPTIONS else 0
+st.sidebar.selectbox(
+    "Role",
+    ROLE_OPTIONS,
+    index=role_index,
+    disabled=role_disabled,
+    key="selected_role",
+    help="Enter Canvas Group Number first. Role will lock after your first message.",
+)
+
+# ----------------------------
 # Role selection behavior:
 # - Only reset messages when role changes AND role is not locked
 # - Once locked, role cannot be changed (selectbox disabled)
+# - Ignore placeholder as a 'real' role
 # ----------------------------
-if (not st.session_state["role_locked"]) and user_role and (user_role != st.session_state["selected_role"]):
-    st.session_state["selected_role"] = user_role
-    st.session_state["messages"] = [{"role": "assistant", "content": build_welcome_message(user_role)}]
-    st.session_state["welcome_role"] = user_role
-    st.session_state["start_time"] = datetime.now()
-    messages = st.session_state["messages"]
+current_role = st.session_state["selected_role"]
+if (not st.session_state["role_locked"]) and (current_role != st.session_state.get("welcome_role", "")):
+    if current_role != ROLE_PLACEHOLDER:
+        st.session_state["messages"] = [{"role": "assistant", "content": build_welcome_message(current_role)}]
+        st.session_state["welcome_role"] = current_role
+        st.session_state["start_time"] = datetime.now()
 
 # ----------------------------
 # Manual save button (optional)
 # ----------------------------
 if st.sidebar.button("End Conversation"):
     saved_file, save_error = save_conversation_to_gcp(
-        messages,
+        st.session_state["messages"],
         selected_mode,
-        user_pid.strip(),
+        st.session_state["pid"].strip(),
         st.session_state["selected_role"].strip(),
         st.session_state["selected_section"].strip(),
     )
@@ -377,12 +382,16 @@ for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# ----------------------------
 # Require Section + PID + role before chatting
+# (explicit placeholder check prevents default Retailer behavior)
+# ----------------------------
 chat_enabled = (
     bool(st.session_state["selected_section"].strip())
-    and bool(user_pid.strip())
-    and bool(st.session_state["selected_role"].strip())
+    and bool(st.session_state["pid"].strip())
+    and (st.session_state["selected_role"] != ROLE_PLACEHOLDER)
 )
+
 if not chat_enabled:
     st.info("Select a Section, enter Canvas Group Number, and select a Role in the sidebar to start chatting.")
 
@@ -423,11 +432,11 @@ if user_input := st.chat_input("Ask a Beer Game question...", disabled=not chat_
         }
     )
 
-    # Autosave ALWAYS
+    # Autosave ALWAYS (CSV)
     saved_file, save_error = save_conversation_to_gcp(
         st.session_state["messages"],
         selected_mode,
-        user_pid.strip(),
+        st.session_state["pid"].strip(),
         st.session_state["selected_role"].strip(),
         st.session_state["selected_section"].strip(),
     )
@@ -438,10 +447,11 @@ if user_input := st.chat_input("Ask a Beer Game question...", disabled=not chat_
     else:
         st.sidebar.caption(f"Autosaved: {saved_file}")
 
+    # Autosave structured JSON
     structured_file, structured_error = save_structured_response_to_gcp(
         assistant_payload,
         selected_mode,
-        user_pid.strip(),
+        st.session_state["pid"].strip(),
         st.session_state["selected_role"].strip(),
         st.session_state["selected_section"].strip(),
         user_input,
