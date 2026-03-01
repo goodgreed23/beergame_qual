@@ -42,8 +42,12 @@ STRUCTURED_OUTPUT_COMMON_INSTRUCTION = (
 )
 
 QUANTITATIVE_OUTPUT_INSTRUCTION = (
-    "For quantitative fields: quantitative_reasoning can include explicit calculations and "
-    "quantitative_answer must be ONE exact integer only (for example: 12), with no words or units."
+    "For quantitative fields: quantitative_reasoning should show explicit step-by-step logic from the provided state "
+    "(demand signal, inventory position, backlog, shipments/receipts, and pipeline assumptions when needed). "
+    "If any value is missing, state assumptions briefly and continue. "
+    "The final quantitative_answer must be ONE exact integer only (for example: 12), with no words or units. "
+    "quantitative_answer must be consistent with quantitative_reasoning and with the recommendation direction in qualitative_answer. "
+    "Avoid impossible outputs (for example, negative order quantities)."
 )
 
 QUALITATIVE_OUTPUT_INSTRUCTION = (
