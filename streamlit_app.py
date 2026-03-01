@@ -89,7 +89,13 @@ messages = st.session_state["messages"]
 # ----------------------------
 
 st.sidebar.markdown("### Instruction")
-st.sidebar.info("When you use the chatbot, ...")
+st.sidebar.info("""When you use the Beer Game Assistant, keep the following the following in mind:
+
+- Do **not** change your role mid-game (the assistant will reset).
+- Do **not** refresh the page (the assistant will reset).
+- Responses may take a moment—please be patient.
+- For best advice, share the current week’s context during each interaction. This can include **Week, Demand, Inv/Bk (inventory or backlog), Incoming shipment, Relevant recent orders**.
+- If something looks wrong or you hit a technical issue, **raise your hand**.""")
 
 SECTION_OPTIONS = ["OPMGT 301 A", "OPMGT 301 B", "OPMGT 301 C"]
 
@@ -107,7 +113,7 @@ st.session_state["selected_section"] = user_section
 
 user_pid = st.sidebar.text_input("Canvas Group Number")
 
-ROLE_OPTIONS = ["Retailer", "Wholesaler", "Distributor", "Factory"]
+ROLE_OPTIONS = ["Select your role...", "Retailer", "Wholesaler", "Distributor", "Factory"]
 
 role_disabled = (not bool(user_pid.strip())) or st.session_state["role_locked"]
 
@@ -123,6 +129,8 @@ user_role = st.sidebar.selectbox(
     disabled=role_disabled,
     help="Enter Canvas Group Number first. Role will lock after your first message.",
 )
+
+role_valid = user_role != "Select your role..."
 
 selected_mode = "BeerGameQualitative"
 system_prompt = MODEL_CONFIGS[selected_mode]["prompt"]
@@ -157,8 +165,8 @@ def build_system_prompt(base_prompt: str, role: str) -> str:
 def build_welcome_message(role: str) -> str:
     role_text = role.strip()
     return (
-        f"You are the '{role_text}'. I will help you with making decisions. "
-        "Please share the current round context, incoming demand, inventory, backlog, and pipeline orders."
+        f"You are the '{role_text}'. I will help you with making ordering decisions."
+        "Please share the current week’s context including incoming demand, inventory, backlog, and relevant recent orders you’ve made."
     )
 
 
