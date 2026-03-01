@@ -42,7 +42,7 @@ MODEL_SELECTED = "gpt-5-mini"
 FALLBACK_MODEL = "gpt-4o-mini"
 
 st.title("Beer Game Assistant")
-st.write("Ask strategy and concept questions for your Beer Game role.")
+st.write("Ask ordering strategy questions for your Beer Game role.")
 
 # ----------------------------
 # OpenAI client
@@ -435,7 +435,7 @@ if user_input := st.chat_input("Ask a Beer Game question...", disabled=not chat_
         st.error(str(exc))
         st.stop()
 
-    with st.chat_message("assistant", avatar="🍺"):
+    with st.chat_message("assistant"):
         st.write_stream(response_generator(response=assistant_text))
 
     st.session_state["messages"].append(
