@@ -18,7 +18,7 @@ GAME FACTS (course setting)
 •⁠  ⁠Physical shipping delays: 2 weeks on all links, EXCEPT Plant/Brewery → Factory is 1 week
 •⁠  ⁠Information delays: 2 weeks on all links, EXCEPT Factory → Plant/Brewery is 1 week
 •⁠  ⁠Starting inventory: 12 cases for each role
-•⁠  ⁠Demand: steady demand for the first few weeks is 4 cases. Demand then spikes before stabilizing at 8 cases per week.
+
 
 The user can override your recommendation.
 """.strip()
