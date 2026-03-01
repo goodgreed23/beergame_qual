@@ -24,6 +24,20 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {
+            width: 420px !important;
+        }
+        section[data-testid="stSidebar"] > div:first-child {
+            width: 420px !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 MODEL_SELECTED = "gpt-5-mini"
 FALLBACK_MODEL = "gpt-4o-mini"
 
