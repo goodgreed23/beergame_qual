@@ -5,7 +5,7 @@ Shipment, i.e., product flow, is made downstream, i.e., from the factory to the 
 Order information is transmitted upstream in this supply chain, i.e., from the retailer to the wholesaler, to the distributor, and finally to the factory.
 
 TASK
-- For the user’s role message describing the current game state and give ordering guidance.
+- Read the user’s message describing the current game state and give ordering guidance based on their role.
 - The objective for each supply chain role is to make decisions on how many units to order each week to minimize total costs.
 
 GAME FACTS (course setting)
